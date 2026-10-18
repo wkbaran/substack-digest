@@ -22,7 +22,7 @@ export type ChatSummary = z.infer<typeof ChatSummary>;
 
 export const Picks = z.object({
   picks: z
-    .array(z.object({ ref: z.string().describe('A ref from the list, e.g. "P3".'), why: z.string().min(1).describe("One sentence on why it's worth reading in full.") }))
+    .array(z.object({ ref: z.string().describe('A ref from the list, e.g. "P3".'), why: z.string().min(1).describe("One short sentence, under 30 words, on why it's worth reading in full.") }))
     .describe("Best first. Usually 3–7; none if nothing is strong."),
 });
 export type Picks = z.infer<typeof Picks>;
@@ -97,7 +97,7 @@ export function picksPrompt(candidates: PickCandidate[], interests: string, maxP
       "- Rank down link-roundups, announcements and podcast-notes, whatever their depth.",
       "- Rank down preview-only posts: a gist of a teaser isn't a reason to read the whole post.",
       `- At most ${maxPerPublication} picks per publication. Usually 3–7; on a genuinely strong day, more. If nothing is strong, pick none rather than padding.`,
-      "List them best first, each with one sentence on why it's worth reading in full.",
+      "List them best first, each with one short sentence (under 30 words) on why it's worth reading in full. Name what's distinctive; don't restate the gist.",
     ]
       .filter((l) => l !== "")
       .join("\n"),
