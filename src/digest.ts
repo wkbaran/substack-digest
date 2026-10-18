@@ -1,6 +1,6 @@
 import { McpToolError, StructuredOutputError } from "cron-llm";
 import { z } from "zod";
-import { ChatSummary, chatPrompt, PickCandidate, Picks, picksPrompt, PostVerdict, postPrompt } from "./prompts.js";
+import { chatPrompt, chatSummary, type Limits, type PickCandidate, picksPrompt, picksSchema, type PostVerdict, postPrompt, postVerdict } from "./prompts.js";
 
 // One digest run: digest_begin, read every post and ask for a verdict on each,
 // summarize each chat, choose the picks, then digest_finish. The server owns
@@ -49,6 +49,8 @@ export const WorkList = z.object({
   chats: z.array(z.object({ ref: z.string(), id: z.string(), name: z.string(), arguments: z.record(z.string(), z.unknown()) })),
   interests: z.string(),
   warnings: z.array(z.string()),
+  /** substack-reader-mcp 0.7.0+; older servers get their fixed limits. */
+  limits: z.object({ gist: z.number(), why: z.number(), topics: z.number(), for_user: z.number() }).default({ gist: 500, why: 300, topics: 500, for_user: 300 }),
 });
 export type WorkList = z.infer<typeof WorkList>;
 
@@ -86,6 +88,9 @@ export async function runDigest(opts: DigestOptions): Promise<string | null> {
   log(`run ${work.run_id}${work.resumed ? " (continued)" : ""}: ${toRead.length} posts to read, ${work.posts.length - toRead.length} low or skipped, ${work.chats.length} chats`);
   for (const w of work.warnings) log(`warning: ${w}`);
   const tags = [`run:${work.run_id}`];
+  const limits: Limits = work.limits;
+  const PostVerdict = postVerdict(limits);
+  const ChatSummary = chatSummary(limits);
 
   const verdicts = new Map<string, { verdict?: PostVerdict; previewOnly: boolean }>();
   const entries = new Map<string, PostEntry>();
@@ -101,7 +106,7 @@ export async function runDigest(opts: DigestOptions): Promise<string | null> {
     }
     const { previewOnly } = read;
     try {
-      const verdict = await llm.structured(PostVerdict, postPrompt({ text: read.text, truncated: read.truncated, interests: work.interests }), { name: "post_verdict", tags: [...tags, "step:post"] });
+      const verdict = await llm.structured(PostVerdict, postPrompt({ text: read.text, truncated: read.truncated, interests: work.interests, limits }), { name: "post_verdict", tags: [...tags, "step:post"] });
       verdicts.set(post.ref, { verdict, previewOnly });
       log(`${post.ref} (${i + 1}/${toRead.length}): depth ${verdict.depth}, ${verdict.type}${previewOnly ? ", preview only" : ""}`);
     } catch (err) {
@@ -117,7 +122,7 @@ export async function runDigest(opts: DigestOptions): Promise<string | null> {
   for (const chat of work.chats) {
     try {
       const activity = await server.call("get_chat_activity", chat.arguments);
-      const s = await llm.structured(ChatSummary, chatPrompt(chat.name, activity), { name: "chat_summary", tags: [...tags, "step:chat"] });
+      const s = await llm.structured(ChatSummary, chatPrompt(chat.name, activity, limits), { name: "chat_summary", tags: [...tags, "step:chat"] });
       chats.push({ id: chat.id, topics: s.topics, for_user: s.for_user || "none" });
       discussed.push(...s.posts_discussed);
       log(`${chat.ref}: summarized`);
@@ -144,7 +149,7 @@ export async function runDigest(opts: DigestOptions): Promise<string | null> {
       discussed: discussed.some((d) => mentions(d, post)),
     });
   }
-  const picks = await choosePicks(opts, candidates, work.interests, tags);
+  const picks = await choosePicks(opts, candidates, work.interests, tags, limits);
   log(`picks: ${picks.map((p) => p.ref).join(", ") || "none"}`);
 
   const posts: PostEntry[] = [];
@@ -190,13 +195,13 @@ export async function readPost(server: DigestServer, ref: string, maxChars: numb
 }
 
 /** The model's picks, checked: known refs, no repeats, per-publication and total caps. */
-async function choosePicks(opts: DigestOptions, candidates: PickCandidate[], interests: string, tags: string[]): Promise<{ ref: string; why: string }[]> {
+async function choosePicks(opts: DigestOptions, candidates: PickCandidate[], interests: string, tags: string[], limits: Limits): Promise<{ ref: string; why: string }[]> {
   const perPub = opts.maxPicksPerPublication ?? 2;
   const max = opts.maxPicks ?? 10;
   if (!candidates.length) return [];
   let proposed: { ref: string; why: string }[];
   try {
-    proposed = (await opts.llm.structured(Picks, picksPrompt(candidates, interests, perPub), { name: "picks", tags: [...tags, "step:picks"] })).picks;
+    proposed = (await opts.llm.structured(picksSchema(limits, max), picksPrompt(candidates, interests, perPub, max, limits), { name: "picks", tags: [...tags, "step:picks"] })).picks;
   } catch (err) {
     if (!(err instanceof StructuredOutputError)) throw err;
     opts.log(`picks: no usable answer (${err.message}); falling back to depth`);

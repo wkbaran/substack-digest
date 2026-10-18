@@ -50,6 +50,8 @@ The container runs as uid 1000; the state and auth directories should belong to 
 | `DISCORD_FAILURE_WEBHOOK_URL` | Where failure notices go; defaults to the digest webhook |
 | `SUBSTACK_*`, `TZ` | Passed to substack-reader-mcp, and nothing else from the job's environment is. `SUBSTACK_DIGEST_DIR` defaults to `/data` and `SUBSTACK_READER_HOME` to `/auth`. See its README for the classifier and the rest |
 | `SUBSTACK_REAUTH_HINT` | What to do when the session expires; it's sent in place of the digest |
+| `SUBSTACK_DIGEST_GIST_MAX`, `_WHY_MAX`, `_TOPICS_MAX`, `_FOR_USER_MAX` | The server's length limits. `digest_begin` returns them, and the job writes the same numbers into its prompts and schemas, so the model is asked for what the server keeps. Set them here, not in the prompts |
+| `MAX_PICKS`, `PICKS_PER_PUBLICATION` | Most picks in all and from one publication (default 10, 2), also stated in the picks prompt |
 | `MAX_POST_CHARS` | How much of one post the model reads (default 60000) |
 | `JOB_DRY_RUN=1` | Same as `--dry-run` |
 

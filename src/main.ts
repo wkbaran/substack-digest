@@ -25,10 +25,18 @@ await runJob("substack-digest", async ({ env, dryRun, log }) => {
       log,
       dryRun,
       reauth: env.SUBSTACK_REAUTH_HINT ?? "Run `substack-reader-mcp login` on a machine with a browser and copy the new auth.json into the job's auth directory.",
-      maxPostChars: env.MAX_POST_CHARS ? Number(env.MAX_POST_CHARS) : undefined,
+      maxPostChars: positive(env.MAX_POST_CHARS),
+      maxPicks: positive(env.MAX_PICKS),
+      maxPicksPerPublication: positive(env.PICKS_PER_PUBLICATION),
     });
   } finally {
     await server.close();
     log(`tokens: ${llm.usage.prompt_tokens} in, ${llm.usage.completion_tokens} out over ${llm.usage.calls} calls`);
   }
 });
+
+/** A positive whole number from env, or undefined for the default. */
+function positive(raw: string | undefined): number | undefined {
+  const n = Number(raw);
+  return raw && Number.isInteger(n) && n > 0 ? n : undefined;
+}

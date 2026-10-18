@@ -18,6 +18,7 @@ const work = {
   chats: [{ ref: "C1", id: "101", kind: "publication", name: "Systems", arguments: { since: "2026-10-17T12:00:00Z", chat_id: "101", transcripts: true } }],
   interests: "## Interests\n- Databases",
   warnings: [],
+  limits: { gist: 240, why: 120, topics: 300, for_user: 150 },
 };
 
 function fakeServer(over: Partial<Record<string, (args: any) => string>> = {}) {
@@ -81,6 +82,11 @@ describe("runDigest", () => {
     expect(asked.find((a) => a.name === "picks")!.user).toMatch(/P1 \| depth 5 \| analysis \| full \| classifier rank 90 \| discussed in a chat/);
     expect(asked.find((a) => a.name === "picks")!.user).toMatch(/P3 \| depth 4 \| essay \| preview only/);
     expect(asked[0]!.tags).toEqual(["run:20261018-120000-ab12", "step:post"]);
+    // The server's limits are what the model is asked for.
+    expect(asked.find((a) => a.name === "post_verdict")!.user).toContain("at most 240 characters (about 40 words)");
+    expect(asked.find((a) => a.name === "chat_summary")!.user).toContain("at most 300 characters (about 50 words)");
+    expect(asked.find((a) => a.name === "chat_summary")!.user).toContain("at most 150 characters");
+    expect(asked.find((a) => a.name === "picks")!.user).toContain("at most 120 characters (about 20 words)");
 
     const finish = calls.find((c) => c.name === "digest_finish")!.args;
     expect(finish).toMatchObject({ run_id: work.run_id, dry_run: false });
