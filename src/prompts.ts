@@ -14,7 +14,7 @@ export const PostVerdict = z.object({
 export type PostVerdict = z.infer<typeof PostVerdict>;
 
 export const ChatSummary = z.object({
-  topics: z.string().min(1).describe("1–3 sentences on what's being discussed."),
+  topics: z.string().min(1).describe("At most 2 short sentences and 50 words on what's being discussed."),
   for_user: z.string().describe('Any question or mention directed at the reader, else "none".'),
   posts_discussed: z.array(z.string()).describe("URLs or titles of posts people are discussing; empty if none."),
 });
@@ -54,7 +54,7 @@ export function postPrompt(p: { text: string; truncated: boolean; interests: str
 export function chatPrompt(name: string, activity: string): { system: string; user: string } {
   return {
     system: `You summarize new activity in one Substack chat for a daily digest. ${READER} Report what people discussed; never write replies.`,
-    user: `CHAT: ${name}\n\n${activity}\n\ntopics: 1–3 sentences on what's being discussed.\nfor_user: any question or mention directed at the reader, else "none".\nposts_discussed: URLs or titles of posts people are discussing.`,
+    user: `CHAT: ${name}\n\n${activity}\n\ntopics: what's being discussed, in at most 2 short sentences and 50 words. Name the main threads; skip who said what.\nfor_user: any question or mention directed at the reader, else "none".\nposts_discussed: URLs or titles of posts people are discussing.`,
   };
 }
 

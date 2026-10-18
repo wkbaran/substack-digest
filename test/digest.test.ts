@@ -39,7 +39,7 @@ function fakeServer(over: Partial<Record<string, (args: any) => string>> = {}) {
     async callStructured<T>(name: string, args: Record<string, unknown>, schema: z.ZodType<T>) {
       calls.push({ name, args });
       if (over[name]) over[name]!(args);
-      return { value: schema.parse(work), text: "RUN_ID: …" };
+      return { value: schema.parse(work), text: "RUN_ID: …\nCLASSIFIER: jev: unavailable (HTTP 401)\nPOSTS:" };
     },
   };
   return { server, calls };
@@ -93,6 +93,7 @@ describe("runDigest", () => {
     expect(finish.chats).toEqual([{ id: "101", topics: "Replication.", for_user: "none" }]);
     expect(lines).toContain("picks: ignoring unknown ref P9");
     expect(lines).toContain("STATE SAVED: yes");
+    expect(lines).toContain("CLASSIFIER: jev: unavailable (HTTP 401)");
   });
 
   it("keeps at most two picks per publication", async () => {

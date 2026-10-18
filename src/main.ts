@@ -8,8 +8,8 @@ const SERVER = fileURLToPath(new URL("../node_modules/substack-reader-mcp/dist/c
 
 await runJob("substack-digest", async ({ env, dryRun, log }) => {
   const llm = llmFromEnv(env, { tags: ["job:substack-digest"], log });
-  // The server gets its own settings (SUBSTACK_*) and nothing else from the job's environment.
-  const serverEnv = Object.fromEntries(Object.entries(env).filter(([k]) => k.startsWith("SUBSTACK_")));
+  // The server gets its own settings (SUBSTACK_*) and TZ, and nothing else from the job's environment.
+  const serverEnv = Object.fromEntries(Object.entries(env).filter(([k]) => k.startsWith("SUBSTACK_") || k === "TZ"));
   serverEnv.SUBSTACK_DIGEST_DIR ??= "/data";
   serverEnv.SUBSTACK_READER_HOME ??= "/auth";
   const server = await McpServer.start({

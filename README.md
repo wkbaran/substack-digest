@@ -48,7 +48,7 @@ The container runs as uid 1000; the state and auth directories should belong to 
 | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_REASONING_EFFORT` | The gateway and model (see cron-llm). Requests are tagged `job:substack-digest`, `run:<run id>` and `step:post` / `step:chat` / `step:picks` for the gateway's logs |
 | `DISCORD_WEBHOOK_URL` | Where the digest goes. Without it, the message is printed |
 | `DISCORD_FAILURE_WEBHOOK_URL` | Where failure notices go; defaults to the digest webhook |
-| `SUBSTACK_*` | Passed to substack-reader-mcp, and nothing else from the job's environment is. `SUBSTACK_DIGEST_DIR` defaults to `/data` and `SUBSTACK_READER_HOME` to `/auth`. See its README for the classifier and the rest |
+| `SUBSTACK_*`, `TZ` | Passed to substack-reader-mcp, and nothing else from the job's environment is. `SUBSTACK_DIGEST_DIR` defaults to `/data` and `SUBSTACK_READER_HOME` to `/auth`. See its README for the classifier and the rest |
 | `SUBSTACK_REAUTH_HINT` | What to do when the session expires; it's sent in place of the digest |
 | `MAX_POST_CHARS` | How much of one post the model reads (default 60000) |
 | `JOB_DRY_RUN=1` | Same as `--dry-run` |

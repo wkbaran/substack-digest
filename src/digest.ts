@@ -70,7 +70,11 @@ export async function runDigest(opts: DigestOptions): Promise<string | null> {
 
   let work: WorkList;
   try {
-    work = (await server.callStructured("digest_begin", {}, WorkList)).value;
+    const begin = await server.callStructured("digest_begin", {}, WorkList);
+    work = begin.value;
+    // The classifier's status is only in the text (e.g. a rejected key shows as "unavailable").
+    const classifier = /^CLASSIFIER: .*$/m.exec(begin.text)?.[0];
+    if (classifier) log(classifier);
   } catch (err) {
     if (err instanceof McpToolError && AUTH.test(err.message)) {
       log(`digest_begin: ${err.message}`);
