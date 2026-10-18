@@ -12,7 +12,7 @@
 ![Discord](https://img.shields.io/badge/delivers%20to-Discord-5865F2?logo=discord&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-[How a run goes](#how-a-run-goes) · [Running it](#running-it) · [Configuration](#configuration) · [Development](#development)
+[What the model is asked](#what-the-model-is-asked) · [How a run goes](#how-a-run-goes) · [Running it](#running-it) · [Configuration](#configuration) · [Development](#development)
 
 </div>
 
@@ -23,6 +23,32 @@ It's a plain scheduled job, not an agent:
 - [substack-reader-mcp](https://github.com/wkbaran/substack-reader-mcp) runs as a child process. Its digest tools fetch the posts, number them, lay out the message and keep the state (what was already reported, publications to re-check).
 - [cron-llm](https://github.com/wkbaran/cron-llm) calls any OpenAI-compatible gateway with a JSON schema per question, and posts to the Discord webhook.
 - The model answers three kinds of narrow questions: one per post (type, gist, depth 1–5, why), one per chat (topics, anything addressed to you), and one for the picks. The code checks every answer: refs must exist, at most two picks per publication, every post gets an entry.
+
+## What the model is asked
+
+The model never sees the whole day at once. It answers three kinds of narrow question, each with a JSON schema, and every answer is checked by code. The questions are written to get past the usual failure of digest summaries: a sentence about what a post is *about*, which tells you nothing about whether to read it.
+
+**One question per post**, with the post's text (paged, never just the title). The model is told the reader subscribes to these publications and isn't their author, and to judge only from the text given.
+
+| Field | What it means |
+|---|---|
+| `type` | essay, reporting, analysis, tutorial, link-roundup, announcement, podcast-notes, fiction or other. A paid podcast with only show notes is podcast-notes |
+| `gist` | **The post's actual argument or findings, not its topic**, in 1–2 sentences. It leads with the claim ("Rate limits cut tail latency more than retries do, because…"), never "This post discusses…" or "The author argues…". For a roundup, only its main item. Its length is the server's limit (`SUBSTACK_DIGEST_GIST_MAX`), stated in the prompt as characters and approximate words, since models count words better |
+| `depth` | 1–5: **how much you lose by reading only the gist.** 5 is dense original thinking or evidence that doesn't compress; 1 means the gist covers it. This is what a pick is built on: a good post with depth 1 doesn't need reading |
+| `why` | One sentence justifying the depth, naming what's distinctive |
+
+The reader's `interests.md` is shown as context, with the instruction to describe the post as it is: interests shouldn't colour the gist.
+
+**One question per chat** with new activity: `topics` (the main threads, not who said what), `for_user` (any question or mention aimed at the reader, else "none") and `posts_discussed`. The model summarizes; it's told never to write replies.
+
+**One question for the picks**, over all the verdicts (ref, depth, type, whether only a preview was readable, the classifier's rank, whether a chat discussed it, gist and why):
+
+- start from depth 4–5; rank up posts that match the interests, rank high with the classifier, or came up in a chat;
+- rank down link-roundups, announcements and podcast-notes whatever their depth, and preview-only posts ("a gist of a teaser isn't a reason to read the whole post");
+- at most 2 per publication, usually 3–7, and **none rather than padding** on a weak day;
+- each pick gets one sentence on why it's worth reading in full, naming what's distinctive rather than repeating the gist.
+
+The code then checks the answers: every ref must exist, the per-publication cap holds, and every post gets an entry. An answer that doesn't fit its schema costs that one post its gist, not the run.
 
 ## How a run goes
 
