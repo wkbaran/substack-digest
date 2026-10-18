@@ -7,7 +7,7 @@ export const POST_TYPES = ["essay", "reporting", "analysis", "tutorial", "link-r
 
 export const PostVerdict = z.object({
   type: z.enum(POST_TYPES),
-  gist: z.string().min(1).describe("1–2 sentences: the actual argument or findings, not the topic."),
+  gist: z.string().min(1).describe("At most 2 short sentences and 40 words: the actual argument or findings, not the topic."),
   depth: z.number().int().min(1).max(5).describe("How much is lost by reading only the gist: 5 = dense original thinking or evidence that doesn't compress; 1 = the gist covers it."),
   why: z.string().min(1).describe("One sentence justifying depth, naming what's distinctive."),
 });
@@ -42,7 +42,7 @@ export function postPrompt(p: { text: string; truncated: boolean; interests: str
       p.truncated ? "\n[The post continues; only the part above was given.]" : "",
       "",
       "type: what kind of post this is. A paid podcast with only show notes is podcast-notes.",
-      "gist: 1–2 sentences on the actual argument or findings.",
+      "gist: the actual argument or findings in at most 2 short sentences and 40 words. Lead with the claim; skip \"This post…\" and \"The author…\". For a roundup, name only its main item.",
       "depth: 1–5, how much is lost by reading only the gist.",
       "why: one sentence justifying depth.",
     ]
