@@ -12,7 +12,7 @@
 ![Discord](https://img.shields.io/badge/delivers%20to-Discord-5865F2?logo=discord&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-[What the model is asked](#what-the-model-is-asked) · [How a run goes](#how-a-run-goes) · [Running it](#running-it) · [Configuration](#configuration) · [Development](#development)
+[How it fits together](#how-it-fits-together) · [What the model is asked](#what-the-model-is-asked) · [How a run goes](#how-a-run-goes) · [Running it](#running-it) · [Configuration](#configuration) · [Development](#development)
 
 </div>
 
@@ -23,6 +23,21 @@ It's a plain scheduled job, not an agent:
 - [substack-reader-mcp](https://github.com/wkbaran/substack-reader-mcp) runs as a child process. Its digest tools fetch the posts, number them, lay out the message and keep the state (what was already reported, publications to re-check).
 - [cron-llm](https://github.com/wkbaran/cron-llm) calls any OpenAI-compatible gateway with a JSON schema per question, and posts to the Discord webhook.
 - The model answers three kinds of narrow questions: one per post (type, gist, depth 1–5, why), one per chat (topics, anything addressed to you), and one for the picks. The code checks every answer: refs must exist, at most two picks per publication, every post gets an entry.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  cron["supercronic"] --> job["substack-digest<br/>prompts + checks"]
+  job -- "cron-llm" --> llm["LiteLLM → model"]
+  job -- "MCP over stdio" --> mcp["substack-reader-mcp<br/>work list · state · layout"]
+  mcp --> api["Substack"]
+  mcp -. "headline ranks (Jev)" .-> llm
+  mcp -.- libs[("job-ledger · paced-fetch<br/>state files · API pacing")]
+  job -- "webhook" --> discord["Discord"]
+```
+
+The job holds only the prompts and the checks on each answer. [cron-llm](https://github.com/wkbaran/cron-llm) gives it the model calls, the MCP client and the Discord post. The MCP server owns everything with consequences: the API, the state and the message layout, on [job-ledger](https://github.com/wkbaran/job-ledger) for state and [paced-fetch](https://github.com/wkbaran/paced-fetch) for API pacing. The model never touches state or the API directly. The other jobs ([medium-digest](https://github.com/wkbaran/medium-digest), [spotify-discovery](https://github.com/wkbaran/spotify-discovery)) have the same shape with a different server.
 
 ## What the model is asked
 
